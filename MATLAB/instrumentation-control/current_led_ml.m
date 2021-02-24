@@ -15,7 +15,7 @@ clear; close all; clc;
 % frames_to_capture = 100;
 
 % The power supply will drive the LED (or LEDs)
-power_supply = PowerSupply('192.168.10.60', 7655);
+power_supply = PowerSupply('10.13.30.250', 7655);
 led_channel = 1;
 fprintf('Power supply connected...\n');
 
@@ -52,11 +52,11 @@ power_supply.setCurrent(led_channel,0);
 power_supply.setMeasureType(led_channel,'v');
 power_supply.channelOutput(led_channel,1);
 
-% Waiting time
-wait_time = 60;
+% Waiting time (2 minutes)
+wait_time = 120;
 
 % LED COLOR
-color = 'GREEN';
+color = 'BLUE';
 
 % We iterate on all the led_current_list
 for led_current = led_current_list
@@ -96,7 +96,8 @@ for led_current = led_current_list
         fprintf('Multispectral camera is still capturing...\n');
         pause(5); % This prevents CPU throttling
     end
+    
     fprintf('Multispectral camera finished...\n');
-    multispectral_camera.move_files(sprintf('%1.3f', led_current));
-    fprintf('Moving files...\n');
+%     multispectral_camera.move_files(sprintf('%1.3f', led_current));
+%     fprintf('Moving files...\n');
 end

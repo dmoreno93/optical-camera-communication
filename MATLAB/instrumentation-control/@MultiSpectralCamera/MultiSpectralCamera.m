@@ -2,50 +2,54 @@ classdef MultiSpectralCamera
     % The current version of this implementation will carry out a
     % workaround in order to capture images. The workaround is based on the
     % use of a Robot on a separate computer. This robot will be implemented
-    % in Python and will open a TCP Socket Server. 
+    % in Python and will open a TCP Socket Server.
     
     properties (Access=private)
-       socket; 
+        socket;
+        ip;
+        port;
+        mouse;
     end
     
     methods (Access=public)
-       
+        
         % Constructor
         function obj = MultiSpectralCamera(ip,port)
-            obj.socket = tcpip(ip, port);
-            obj.socket.Terminator = 'LF';
-            fopen(obj.socket);
+            import java.awt.Robot;
+            import java.awt.event.*;
+            obj.mouse = Robot;
+            obj.ip = ip;
+            obj.port = port;
+            %obj.socket = tcpip(ip, port);
+            %obj.socket.Terminator = 'LF';
+            %fopen(obj.socket);
         end
         
         % Start capture
         function start_capture(obj)
-            fprintf(obj.socket, 'START');
+            import java.awt.Robot;
+            import java.awt.event.*;
+            % We move the mouse to the desired position
+            obj.mouse.mouseMove(100, 269); % control mouse pointer position
+            obj.mouse.mouseMove(100, 269); % repeating the operation to ensure pointer position moved
+            obj.mouse.mouseMove(100, 269);
+            obj.mouse.mouseMove(100, 269);
+            pause(1);
+            
+            % We capture 100 images pressing the button
+            for i = 1:100
+                pause(0.3);
+                obj.mouse.mousePress(InputEvent.BUTTON1_MASK); % left click press
+                obj.mouse.mouseRelease(InputEvent.BUTTON1_MASK); % left click release
+            end
+            
         end
         
         % Check if capture has finished
         function [out, err] = has_finished(obj)
             err = 0; % No error detected
-            
-            % We ask the server if it has finished
-            fprintf(obj.socket, 'FINISHED?');
-            response = fgetl(obj.socket);
-            
-            % No error control implemented yet
-            if strcmp(response,'OK')
-                out = 1;
-            else
-                out = 0;
-            end
-            
+            out = 1;
         end
-        
-        % Indicate the server that the files can be moved
-        function move_files(obj, folder)
-            line = sprintf('FOLDER %s', folder);
-            fprintf(obj.socket, line);
-        end
-        
-        
         
     end
     
