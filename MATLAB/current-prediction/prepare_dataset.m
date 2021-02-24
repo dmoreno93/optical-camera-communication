@@ -1,13 +1,12 @@
 %% PREPARE DATASET
 
-% This must be expanded
-currentList = [0 50e-3 100e-3];
+current_list = linspace(0, 100e-3, 101);
 
 % dataset variables initialization
 features = [];
 labels = [];
 
-for current = currentList
+for current = current_list
    current_str = sprintf('%1.3f',current);
    % First of all we compose the filename to load the signatures
    data_file = strcat(current_str,'_signatures.mat');
