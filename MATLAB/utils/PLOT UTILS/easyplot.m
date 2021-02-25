@@ -25,7 +25,8 @@ if strcmp(style, 'light')
     ticklabelinterpreter = 'latex';
 elseif strcmp(style, 'strong')
     box = 'on';
-    linewidth = 2.0;
+%     linewidth = 2.0; % default
+    linewidth = 1.0; % thinner grid lines
     plotlinewidth = 1.5;
     xgrid = 'on';
     ygrid = 'on';
@@ -81,7 +82,7 @@ for I = 1:numRows-double(lastRowCols ~= 0)
         subplot('position', [posX, posY, width, height]);
         hold on
         for K = 1:size(ydata,2)
-            % plot(xdata, ydata(:,K), [colors{K} styles{K}], 'LineWidth', plotlinewidth);
+%             plot(xdata, ydata(:,K), [colors{K} styles{K}], 'LineWidth', plotlinewidth);
             plot(xdata, ydata(:,K), 'Color', colors{K}, 'LineStyle', styles{K}, 'LineWidth', plotlinewidth);
         end
         hold off
@@ -89,11 +90,18 @@ for I = 1:numRows-double(lastRowCols ~= 0)
         xlabel(data(count).xlabel, 'Interpreter', 'latex', 'FontSize', fontsize);
         ylabel(data(count).ylabel, 'Interpreter', 'latex', 'FontSize', fontsize);
         
+        % uncomment the following lines to set specified axis
+%         axis([27.3 83.6 11 20])
+%         ylim([1e-10 1]);
+%         xlim([xdata(1), xdata(end)]);
+    
         set(gca,'box',box,'linewidth',linewidth, ...
             'xgrid',xgrid, 'ygrid',ygrid,'fontsize',axesfontsize, ...
             'ticklabelinterpreter', ticklabelinterpreter);
         
-        legend(leg, 'Interpreter', 'latex', 'FontSize', fontsize);
+        legend(leg, 'Interpreter', 'latex', 'FontSize', fontsize, 'Location','northeast'); % comment this line to hide legend
+        % Location with respect to the axes:
+        % e.g. legend('Location','northeastoutside')
         
         count = count + 1;
     end
@@ -108,7 +116,7 @@ for J = 1:lastRowCols
     subplot('position', [posX, posY, width, height]);
     hold on
     for K = 1:size(data(count),2)
-        % plot(xdata, ydata(:,K), [colors{K} styles{K}], 'LineWidth', plotlinewidth);
+%         plot(xdata, ydata(:,K), [colors{K} styles{K}], 'LineWidth', plotlinewidth);
         plot(xdata, ydata(:,K), 'Color', colors{K}, 'LineStyle', styles{K}, 'LineWidth', plotlinewidth);
     end
     hold off
@@ -116,11 +124,18 @@ for J = 1:lastRowCols
     xlabel(data(count).xlabel, 'Interpreter', 'latex', 'FontSize', fontsize);
     ylabel(data(count).ylabel, 'Interpreter', 'latex', 'FontSize', fontsize);
     
-    set(gca,'box',box,'linewidth',linewidth, ...
-        'xgrid',xgrid, 'ygrid',ygrid,'fontsize',axesfontsize,...
-        'tickLabelInterpreter','latex');
+    % uncomment the following lines to set specified axis
+%     axis([27.3 83.6 11 20])
+%     ylim([1e-10 1]);
+%     xlim([xdata(1), xdata(end)]);
     
-    legend(leg, 'Interpreter', 'latex', 'FontSize', fontsize);
+    set(gca,'box',box,'linewidth',linewidth, ...
+        'xgrid',xgrid, 'ygrid',ygrid,'fontsize',axesfontsize, ...
+        'ticklabelinterpreter', ticklabelinterpreter);
+    
+    legend(leg, 'Interpreter', 'latex', 'FontSize', fontsize, 'Location','northeast'); % comment this line to hide legend
+    % Location with respect to the axes:
+    % e.g. legend('Location','northeastoutside')
     
     count = count + 1;
 end
@@ -140,9 +155,13 @@ else
     
     % Paper size and PaperPosition control must be controlled yet
     set(gcf, 'PaperSize', [20*plotsPerRow 20*numRows]);
-    % set(gcf, 'PaperPositionMode','auto');
-    set(gcf, 'PaperPosition', [0 0 20*plotsPerRow 20*numRows]);
+%     set(gcf, 'PaperPositionMode','auto');
+    set(gcf, 'PaperPosition', [0.5 0 20*plotsPerRow 20*numRows]);
     set(gcf,'Position',[0 0 20*plotsPerRow 20*numRows]);
+    
+%     set(gca, 'YScale', 'log') % set logarithmic yscale 
+%     t = title('(b)', 'Units', 'normalized', 'Position', [0.5, -0.17, 0]); % Set Title with correct Position
+
 
     print(name, ['-d' extension]);
 end
