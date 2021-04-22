@@ -13,7 +13,6 @@ import serial
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-import os
 
 
 def clean_pipe(pipe):
@@ -28,26 +27,27 @@ parent_pipe, child_pipe = mp.Pipe()
 process = mp.Process(target=MultispectralCamera.camera_loop, args=(parent_pipe,))
 process.start()
 
-arduino = serial.Serial(port='/dev/ttyACM0', baudrate=9600, timeout=1)  # open serial port
+arduino_1 = serial.Serial(port='/dev/ttyACM0', baudrate=9600, timeout=1)  # open serial port
+arduino_2 = serial.Serial(port='/dev/ttyUSB0', baudrate=9600, timeout=1)  # open serial port
 time.sleep(2)  # wait for the Arduino bootloader
 
 array = RingBuffer(capacity=300, dtype=np.ndarray)  # create an array containing the band values of the selected pixel
-
-child_pipe.send("START")
-
-# We select the pixel of interest
-image = child_pipe.recv()  # receive a frame
-
-child_pipe.send("STOP")
-clean_pipe(child_pipe)
-
-plt.imshow(image[:, :, 8], 'coolwarm')  # show the frame to choose the pixel
-coords = plt.ginput()  # select coordinates
-plt.close()
+array_signatures1 = RingBuffer(capacity=300, dtype=np.ndarray)  # create an array to store the signatures of the LED 1
+array_signatures2 = RingBuffer(capacity=300, dtype=np.ndarray)  # create an array to store the signatures of the LED 2
 
 
-def save_image(img, path='/home/mithrandir/Documentos/Images/', filename='img', count=0):
-    cv2.imwrite(path + filename + '_' + '%d' % count + '.tiff', img)
+def save_image(img, path='/home/mithrandir/Documentos/Images/', filename='img', img_index=0):
+    cv2.imwrite(path + filename + '_' + '%d' % img_index + '.tiff', img)
+
+
+def show_image():
+    while True:
+        img = child_pipe.recv()
+        print(np.max(img.flatten()))
+        # cv2.imshow('Display', img[100:, 100:])  # to show the raw frame (modify MultispectraCamera.py to receive raw)
+        cube_display = np.array(img, dtype=np.uint8)  # to show the MS frame
+        cv2.imshow('Display', cube_display[:, :, 8])
+        cv2.waitKey(1)
 
 
 def hypercube(img, shape_x, shape_y, size_x_macro_pixel, size_y_macro_pixel):
@@ -64,7 +64,7 @@ def hypercube(img, shape_x, shape_y, size_x_macro_pixel, size_y_macro_pixel):
 
 
 def read_ms_image(path, filename):
-    """ Read an raw image and split it into different MS bands"""
+    """ Read a raw image and split it into different MS bands"""
     img = tiff.TiffReader(path + filename + '.tiff')  # read TIFF file
     img_array = img.asarray()  # turn into an array
     cube = hypercube(np.array(img_array), 426, 339, 3, 3)  # split raw image into 9 bands
@@ -90,105 +90,200 @@ def get_spectral_signature(ms_image, pixel_x=None, pixel_y=None):
 
 
 def channel_matrix(sp_1, sp_2):
-    h = np.zeros((9, 2))  # preallocation
+    matrix = np.zeros((9, 2))  # preallocation
     for i in range(9):
-        h[i, 0] = sp_1[i]
-        h[i, 1] = sp_2[i]
-    return h
+        matrix[i, 0] = sp_1[i]
+        matrix[i, 1] = sp_2[i]
+    return matrix
 
 
-#def write_read(data):
-#    while True:
-#        arduino.write(bytes(data, 'utf-8'))
-#        print("character written")
-#        # time.sleep(0.05)
-#        ack = arduino.readline()
-#        while ack == b'':
-#            ack = arduino.readline()
-#            print("waiting for ack")
-
+# If using thread:
 def write_read():
-    file = open("/home/mithrandir/Documentos/sample.txt", "a")
+    file = open("/home/mithrandir/Documentos/sample.txt", "a")  # open file to save sequence
     while True:
         c = random.choice(string.ascii_letters + string.digits)
-        file.write(c + "\n")
-        arduino.write(bytes(c, 'utf-8'))
+        file.write(c + "\n")  # save character generated
+        arduino_1.write(bytes(c, 'utf-8'))
         print("character written")
         # time.sleep(0.05)
-        ack = arduino.readline()
+        ack = arduino_1.readline()
         while ack == b'':
-            ack = arduino.readline()
+            ack = arduino_1.readline()
             print("waiting for ack")
 
 
-def generate_chars_to_send(amount):
-    # return [0, 0]
-    return [random.randint(0, 255) for i in range(amount)]
-    #characters = []
-    #for i in range(10):
-        #characters.append(random.choice(string.ascii_letters + string.digits))
-    #    i += 1
-    #return characters
-
-#def generate_char():
-#    c = random.choice(string.ascii_letters + string.digits)
-#    file = open("/home/mithrandir/Documentos/sample.txt", "a")
-#    file.write(c + "\n")
-#    file.close()
-#    return c
-
-
+# If using thread:
 def store_pixel():
     while True:
-        frame = child_pipe.recv()
-        array.append(frame[int(coords[0][1]), int(coords[0][0]), :])
+        img = child_pipe.recv()
+        array.append(img[int(coords[0][1]), int(coords[0][0]), :])
         # print(len(array))
 
 
-def arduino_send(character):
-    time.sleep(0.5)
-    arduino.write(int.to_bytes(character, length=1, byteorder='big', signed=False))
+def generate_chars_to_send(amount):
+    return [random.randint(0, 255) for _ in range(amount)]
+    # characters = []
+    # for i in range(10):
+    #   characters.append(random.choice(string.ascii_letters + string.digits))
+    #    i += 1
+    # return characters
 
+
+def arduino_send(device, character):
+    time.sleep(0.5)
+    device.write(int.to_bytes(character, length=1, byteorder='big', signed=False))
+
+################## USING THREAD ##################
 # t1 = threading.Thread(target=store_pixel)
-# t2 = threading.Thread(target=write_read, args=generate_char())
 # t2 = threading.Thread(target=write_read)
 # t1.start()
 # t2.start()
 # t1.join()
 # t2.join()
+##################################################
 
 
 try:
     buffer_length = 300
-    chars_to_send = generate_chars_to_send(500)
-    np.save("captures/list.npy", chars_to_send)
+    chars_to_send_1 = generate_chars_to_send(500)
+    chars_to_send_2 = generate_chars_to_send(500)
+    np.save("captures/list_1.npy", chars_to_send_1)
+    np.save("captures/list_2.npy", chars_to_send_2)
+    print("Lists of characters saved")
 
-    for index, current_char in enumerate(chars_to_send):
+    # SELECT COORDINATES #
+    child_pipe.send("START")
+
+    # We select the pixel of interest
+    image = child_pipe.recv()  # receive a frame
+
+    # Stop receiving and clean the pipe
+    child_pipe.send("STOP")
+    clean_pipe(child_pipe)
+
+    plt.imshow(image[:, :, 8], 'coolwarm')  # show the frame to choose the pixel
+    print("Select ROI")
+    coords = plt.ginput()  # select coordinates
+    plt.close()
+
+    # Check if the image is saturated
+    flag = "NO"
+    while flag[0] != "Y":
+        child_pipe.send("START")
+        image = child_pipe.recv()
+        child_pipe.send("STOP")
+        clean_pipe(child_pipe)
+        plt.plot(image[int(coords[0][1]), int(coords[0][0]), :])
+        plt.show()
+        flag = input('Was the signature OK (not saturated)? [YES or NO]').upper()
+        plt.close()
+
+    # Capture signatures
+    # Signature LED 1
+    child_pipe.send("START")
+    image = child_pipe.recv()
+    child_pipe.send("STOP")
+    clean_pipe(child_pipe)
+
+    plt.imshow(image[:, :, 8], 'coolwarm')  # show the frame to choose the pixel
+    print("Select ROI (signature 1)")
+    coords_s1 = plt.ginput()  # select coordinates
+    plt.close()
+    # Signature LED 2
+    child_pipe.send("START")
+    image = child_pipe.recv()
+    child_pipe.send("STOP")
+    clean_pipe(child_pipe)
+
+    plt.imshow(image[:, :, 8], 'coolwarm')  # show the frame to choose the pixel
+    print("Select ROI (signature 2)")
+    coords_s2 = plt.ginput()  # select coordinates
+    plt.close()
+
+    # Save signatures
+    child_pipe.send("START")
+    frame_counter = 0
+    while frame_counter < buffer_length:
+        frame = child_pipe.recv()
+        array.append(frame[int(coords_s1[0][1]), int(coords_s1[0][0]), :])
+        frame_counter += 1
+    print("Bit stream captured")
+    child_pipe.send("STOP")
+    clean_pipe(child_pipe)
+    np.save("captures/signature1.npy", array)
+
+    child_pipe.send("START")
+    frame_counter = 0
+    while frame_counter < buffer_length:
+        frame = child_pipe.recv()
+        array.append(frame[int(coords_s2[0][1]), int(coords_s2[0][0]), :])
+        frame_counter += 1
+    print("Bit stream captured")
+    child_pipe.send("STOP")
+    clean_pipe(child_pipe)
+    np.save("captures/signature2.npy", array)
+
+    ####################
+    # Load signatures
+    signature_1 = np.load("captures/signature1.npy", allow_pickle=True)
+    signature_2 = np.load("captures/signature2.npy", allow_pickle=True)
+    signature_1 = Decoder.tuple_to_array(signature_1)
+    signature_2 = Decoder.tuple_to_array(signature_2)
+
+    # Find index of maximum value from the signature array to select a sample where the LED is ON
+    result_1 = np.where(signature_1 == np.amax(signature_1))
+    result_2 = np.where(signature_2 == np.amax(signature_2))
+
+    # Zip the 2 arrays to get the exact coordinates
+    list_of_coordinates_1 = list(zip(result_1[0], result_1[1]))
+    list_of_coordinates_2 = list(zip(result_2[0], result_2[1]))
+
+    # Select the sample where the maximum value was found
+    signature_1 = signature_1[list_of_coordinates_1[0][0], :]
+    signature_2 = signature_2[list_of_coordinates_2[0][0], :]
+    h = np.zeros((2, 9))
+    h[0, :] = signature_1
+    h[1, :] = signature_2
+
+    for index, current_char in enumerate(chars_to_send_1):
         child_pipe.send("START")
         print("START SENT")
-        t = threading.Thread(target=arduino_send, args=(current_char,))
-        t.start()
+        # t = threading.Thread(target=arduino_send, args=(current_char,))
+        t_1 = threading.Thread(target=arduino_send, args=(arduino_1, current_char))
+        t_2 = threading.Thread(target=arduino_send, args=(arduino_2, chars_to_send_2[index]))
+        t_1.start()
+        t_2.start()
         print("ARDUINO STARTED")
         frame_counter = 0
         while frame_counter < buffer_length:
             frame = child_pipe.recv()
             array.append(frame[int(coords[0][1]), int(coords[0][0]), :])
+            array_signatures1.append(frame[int(coords_s1[0][1]), int(coords_s1[0][0]), :])
+            array_signatures2.append(frame[int(coords_s2[0][1]), int(coords_s2[0][0]), :])
             frame_counter += 1
-        t.join()
+        t_1.join()
+        t_2.join()
         print("Bit stream captured")
         child_pipe.send("STOP")
         clean_pipe(child_pipe)
         np.save("captures/" + str(index) + ".npy", array)
+        np.save("captures/signatures1_" + str(index) + ".npy", array_signatures1)
+        np.save("captures/signatures2_" + str(index) + ".npy", array_signatures2)
     print("Capture completed")
 
     child_pipe.send('FINISH')
 
-    for band in range(9):
-        Decoder.execute(band)
+    # 1 TX
+    # for band in range(9):
+    #    Decoder.execute(band)
+    # 2 TXs
+    Decoder.execute_2_txs(h)
 
 except KeyboardInterrupt:
     child_pipe.send('ABORT')
-
+except:
+    print("Unexpected error")
+    child_pipe.send('ABORT')
 
 
 ###### LOAD DATA ######
@@ -201,7 +296,7 @@ except KeyboardInterrupt:
 #char_tx = np.load('/home/mithrandir/Documentos/list.npy')
 ## restore np.load for future normal usage
 #np.load = np_load_old
-#
+
 #print(data.shape)
 #print(data[0][:])
 #print(char_tx)
@@ -210,17 +305,6 @@ except KeyboardInterrupt:
 #######################
 
 # np.savetxt('/home/mithrandir/Documentos/Images/frames.npy', array) # save arrays
-
-
-############ DISPLAY IMAGE ############
-# while True:
-    # frame = child_pipe.recv()
-    # print(np.max(frame.flatten()))
-    # cv2.imshow('Display', frame[100:, 100:]) # to show the raw frame
-    # cube_display = np.array(frame, dtype=np.uint8) # to show the MS frame
-    # cv2.imshow('Display', cube_display[:, :, 8])
-    # cv2.waitKey(1)
-#######################################
 
 ############## CHECK FPS ##############
 # print("Saving images")
@@ -231,13 +315,12 @@ except KeyboardInterrupt:
 #######################################
 
 # Here's an example of usage
-#image = read_ms_image('/home/mithrandir/Documentos/Images/', 'img_0')  # read image
-#plt.imshow(image[:, :, 3], 'coolwarm')  # show image
-#coords = plt.ginput()  # select coordinates
-#print(coords[0][0])
-#print(coords[0][1])
-#plt.close()
-#sp = get_spectral_signature(image, int(coords[0][0]), int(coords[0][0]))
-#plt.plot(range(9), sp[:])
-#plt.show()
-
+# image = read_ms_image('/home/mithrandir/Documentos/Images/', 'img_0')  # read image
+# plt.imshow(image[:, :, 3], 'coolwarm')  # show image
+# coords = plt.ginput()  # select coordinates
+# print(coords[0][0])
+# print(coords[0][1])
+# plt.close()
+# sp = get_spectral_signature(image, int(coords[0][0]), int(coords[0][0]))
+# plt.plot(range(9), sp[:])
+# plt.show()

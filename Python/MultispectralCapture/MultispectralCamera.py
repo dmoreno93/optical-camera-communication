@@ -12,7 +12,7 @@ def camera_loop(pipe):
     ms.set_shutter_mode('gs')
     ms.set_pixel_clock(71)
     ms.set_fps(50)
-    ms.set_exposure_time(19.97)
+    ms.set_exposure_time(6)
     ms.set_hw_gain(100)
     print("REEEADY")
 
@@ -80,7 +80,7 @@ class MultispectralCamera(object):
         self.__get_dimensions()
         self.__memory_allocation()
         self.__set_color_mode()
-        #self.__set_events()
+        # self.__set_events()
         self.__mandatory_shit()
 
         print("Color mode {}".format(self.color_mode))
@@ -99,9 +99,9 @@ class MultispectralCamera(object):
         self.__disable_gain_boost()
         self.__device_feature(1)
         self.__set_black_level(0)
-        self.__disable_white_balance()
+        # self.__disable_white_balance()  # doesn't work
         self.__disable_binning()
-        self.__disable_color_correction()
+        # self.__disable_color_correction() # doesn't work
 
     def __set_gamma(self, value=100):
         gamma = ueye.INT(int(value))
@@ -110,9 +110,11 @@ class MultispectralCamera(object):
 
     def __disable_hot_pixel_correction(self, value=0):
         hot_pixel = ueye.c_void_p(int(value))
-        if not ueye.is_HotPixel(self.cam, ueye.IS_HOTPIXEL_DISABLE_CORRECTION, hot_pixel, ueye.sizeof(hot_pixel)) == ueye.IS_SUCCESS:
+        if not ueye.is_HotPixel(self.cam, ueye.IS_HOTPIXEL_DISABLE_CORRECTION, hot_pixel,
+                                ueye.sizeof(hot_pixel)) == ueye.IS_SUCCESS:
             raise RuntimeError("IS_HOTPIXEL_DISABLE_CORRECTION failed")
-        if not ueye.is_HotPixel(self.cam, ueye.IS_HOTPIXEL_DISABLE_SENSOR_CORRECTION, hot_pixel, ueye.sizeof(hot_pixel)) == ueye.IS_SUCCESS:
+        if not ueye.is_HotPixel(self.cam, ueye.IS_HOTPIXEL_DISABLE_SENSOR_CORRECTION, hot_pixel,
+                                ueye.sizeof(hot_pixel)) == ueye.IS_SUCCESS:
             raise RuntimeError("IS_HOTPIXEL_DISABLE_SENSOR_CORRECTION failed")
 
     def __disable_hdr(self):
@@ -125,22 +127,24 @@ class MultispectralCamera(object):
 
     def __device_feature(self, value=1):
         param = ueye.INT(int(value))
-        if not ueye.is_DeviceFeature(self.cam, ueye.IS_DEVICE_FEATURE_CMD_SET_LOG_MODE, param, ueye.sizeof(param)) == ueye.IS_SUCCESS:
+        if not ueye.is_DeviceFeature(self.cam, ueye.IS_DEVICE_FEATURE_CMD_SET_LOG_MODE, param,
+                                     ueye.sizeof(param)) == ueye.IS_SUCCESS:
             raise RuntimeError("IS_DEVICE_FEATURE_CMD_SET_LOG_MODE failed")
 
     def __set_black_level(self, level):
         bl = ueye.UINT(int(level))
-        if not ueye.is_Blacklevel(self.cam, ueye.IS_BLACKLEVEL_CMD_SET_OFFSET, bl, ueye.ctypes.sizeof(bl)) == ueye.IS_SUCCESS:
+        if not ueye.is_Blacklevel(self.cam, ueye.IS_BLACKLEVEL_CMD_SET_OFFSET, bl,
+                                  ueye.ctypes.sizeof(bl)) == ueye.IS_SUCCESS:
             raise RuntimeError("IS_BLACKLEVEL_CMD_SET_OFFSET failed")
         return bl.value
-
-    def __disable_white_balance(self):
-        if not ueye.is_SetWhiteBalance(self.cam, ueye.IS_SET_WB_DISABLE) == ueye.IS_SUCCESS:
-            raise RuntimeError("IS_SET_WB_DISABLE failed")
 
     def __disable_binning(self):
         if not ueye.is_SetBinning(self.cam, ueye.IS_BINNING_DISABLE) == ueye.IS_SUCCESS:
             raise RuntimeError("IS_BINNING_DISABLE failed")
+
+    def __disable_white_balance(self):
+        if not ueye.is_SetWhiteBalance(self.cam, ueye.IS_SET_WB_DISABLE) == ueye.IS_SUCCESS:
+            raise RuntimeError("IS_SET_WB_DISABLE failed")
 
     def __disable_color_correction(self):
         if not ueye.is_SetColorCorrection(self.cam, ueye.IS_CCOR_DISABLE) == ueye.IS_SUCCESS:
@@ -297,7 +301,7 @@ class MultispectralCamera(object):
     # ---------- PIXEL CLOCK --------- #
     def set_pixel_clock(self, pixel_clock):
         """
-        Set the pixel clock in MHz
+        Set the pixel clock in MHz.
         :param pixel_clock: pixel clock to be set
         :return: actual pixel clock
         """
@@ -305,7 +309,7 @@ class MultispectralCamera(object):
         if not ueye.is_PixelClock(self.cam, ueye.IS_PIXELCLOCK_CMD_SET, pc, ueye.ctypes.sizeof(pc)) == ueye.IS_SUCCESS:
             raise RuntimeError("Pixel Clock not set")
 
-        print("Pixel clock set")
+        print("Pixel clock set to", pc.value, "MHz")
 
         return pc.value
 
@@ -348,7 +352,8 @@ class MultispectralCamera(object):
             print('Rolling shutter with global start is set')
         else:
             raise RuntimeError("set_shutter_mode ERROR: 'shuttermode' must be 'gs', 'rs' or 'rsgs'")
-        if not ueye.is_DeviceFeature(self.cam, ueye.IS_DEVICE_FEATURE_CMD_SET_SHUTTER_MODE, s_mode, ueye.ctypes.sizeof(s_mode)) == ueye.IS_SUCCESS:
+        if not ueye.is_DeviceFeature(self.cam, ueye.IS_DEVICE_FEATURE_CMD_SET_SHUTTER_MODE, s_mode,
+                                     ueye.ctypes.sizeof(s_mode)) == ueye.IS_SUCCESS:
             raise RuntimeError("Shutter mode not set")
 
     # ---------- EXPOSURE TIME --------- #
@@ -360,9 +365,11 @@ class MultispectralCamera(object):
         """
 
         exposure_ms_double = ueye.ctypes.c_double(exposure_ms)
-        if not ueye.is_Exposure(self.cam, ueye.IS_EXPOSURE_CMD_SET_EXPOSURE, exposure_ms_double, ueye.ctypes.sizeof(exposure_ms_double)) == ueye.IS_SUCCESS:
+        if not ueye.is_Exposure(self.cam, ueye.IS_EXPOSURE_CMD_SET_EXPOSURE, exposure_ms_double,
+                                ueye.ctypes.sizeof(exposure_ms_double)) == ueye.IS_SUCCESS:
             raise RuntimeError("Exposure time not set")
         actual = exposure_ms_double.value
+        print("Exposure time is set to", actual, "ms")
         if actual != exposure_ms:
             print("Warning: actual value of exposure time is", actual, "ms")
 
@@ -375,7 +382,10 @@ class MultispectralCamera(object):
         """
         gn = ueye.UINT(int(gain))
         # nRet = ueye.is_SetHWGainFactor(self.cam, ueye.IS_SET_MASTER_GAIN_FACTOR, gn)
-        if not ueye.is_SetHardwareGain(self.cam, gn, ueye.IS_IGNORE_PARAMETER, ueye.IS_IGNORE_PARAMETER, ueye.IS_IGNORE_PARAMETER) == ueye.IS_SUCCESS:
+        # if not ueye.is_SetHardwareGain(self.cam, gn, ueye.IS_IGNORE_PARAMETER, ueye.IS_IGNORE_PARAMETER,
+        #                                ueye.IS_IGNORE_PARAMETER) == ueye.IS_SUCCESS:
+        if not ueye.is_SetHardwareGain(self.cam, gn, ueye.UINT(int(0)), ueye.INT(int(0)),
+                                       ueye.INT(int(0))) == ueye.IS_SUCCESS:
             raise RuntimeError("Gain not set")
         print("Master gain set to", gn.value)
 
@@ -427,7 +437,8 @@ class MultispectralCamera(object):
         while True:
             if self.status == 'RUN':
                 if ueye.is_WaitEvent(self.cam, ueye.IS_SET_EVENT_FRAME, 5000) == ueye.IS_SUCCESS:
-                    data = ueye.get_data(self.image_memory, self.width, self.height, self.bits_per_pixel, self.pitch, False)
+                    data = ueye.get_data(self.image_memory, self.width, self.height, self.bits_per_pixel, self.pitch,
+                                         False)
                     frame = np.reshape(data, (self.height.value, self.width.value, self.bytes_per_pixel))
                     # self.pipe.send(frame)  # send raw image
                     # raw_frame = frame[:, :, 1] * 256 + frame[:, :, 0]  # Image raw in 10bits

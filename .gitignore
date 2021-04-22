@@ -1,4 +1,5 @@
 venv/
+captures/
 *.m~
 *.bin
 *.hdr
